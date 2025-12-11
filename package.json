@@ -1,0 +1,26 @@
+{
+  "name": "facesnap",
+  "version": "2.0.0",
+  "description": "人脸检测与识别服务 - 前后端统一启动管理",
+  "scripts": {
+    "install:all": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"cd backend && uv sync\" \"cd frontend && npm install\"",
+    "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && uv run python run.py",
+    "frontend": "cd frontend && npm run dev",
+    "start": "npm run backend",
+    "database:init": "cd backend && uv run python scripts/init_database.py",
+    "build": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "face-detection",
+    "face-recognition",
+    "fastapi",
+    "python"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

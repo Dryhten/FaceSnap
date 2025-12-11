@@ -1,0 +1,180 @@
+---
+alwaysApply: true
+---
+
+# FaceSnap 项目开发规范
+
+**产品定位:** 基于 FastAPI 的人脸检测与识别服务，提供统一的人脸检测、识别和人员信息查询 API。
+
+---
+
+## 1. 技术栈
+
+### 后端
+* **Language**: Python 3.10+
+* **Framework**: FastAPI (异步)
+* **AI**: MTCNN (人脸检测) + InceptionResnetV1 (人脸识别，facenet-pytorch)
+* **Database**: SQLite (sqlite3)
+* **环境管理**: uv
+* **图像处理**: OpenCV, PIL, NumPy
+* **日志**: Python logging 模块
+
+### 前端（待创建）
+* **Framework**: React 18+ 或 Vue 3+ (推荐 React)
+* **构建工具**: Vite
+* **UI框架**: Ant Design 或 Element Plus
+* **状态管理**: Zustand/Redux Toolkit (React) 或 Pinia (Vue)
+* **HTTP**: Axios
+* **路由**: React Router v6 或 Vue Router v4
+* **TypeScript**: 推荐使用
+
+---
+
+## 2. 目录结构
+
+```
+FaceSnap/
+├── backend/
+│   ├── app/              # 应用核心代码
+│   │   ├── api/v1/endpoints/  # API路由层
+│   │   ├── core/         # 配置和模型
+│   │   ├── services/     # 业务逻辑层
+│   │   └── utils/        # 工具函数
+│   ├── config/           # 配置
+│   ├── data/
+│   │   ├── database/     # SQLite数据库文件
+│   │   └── faces/        # 人脸图片存储
+│   ├── scripts/          # 脚本（init_database.py）
+│   ├── pyproject.toml    # Python依赖配置
+│   └── uv.lock
+├── frontend/             # 前端项目（待创建）
+├── main.py              # FastAPI应用入口
+└── package.json         # npm启动脚本
+```
+
+---
+
+## 3. 开发规范
+
+### 3.1 环境管理
+* **安装依赖**: `cd backend && uv sync`
+* **启动服务**: `npm run dev` (同时启动前后端) 或 `npm run backend` (仅后端)
+* **初始化数据库**: `npm run database:init`
+* **虚拟环境**: uv 自动管理 `backend/.venv/`
+
+### 3.2 代码规范
+* **风格**: PEP 8，4空格缩进，行长度≤100字符
+* **命名**: 文件名 snake_case，类名 PascalCase，函数名 snake_case，常量 UPPER_SNAKE_CASE
+* **导入**: 标准库 → 第三方库 → 本地模块，使用绝对导入
+* **类型提示**: 所有函数必须使用类型提示
+* **文档**: 所有公共函数和类必须有 Google 风格 docstring
+
+### 3.3 架构规范
+* **分层**: API层(请求响应) → 服务层(业务逻辑) → 核心层(配置模型) → 工具层(通用函数)
+* **服务初始化**: 在 `main.py` 的 `lifespan` 中初始化，使用全局变量管理实例
+* **异步处理**: I/O操作使用 async/await，CPU密集型任务使用 `run_in_executor`
+
+### 3.4 API设计
+* **风格**: RESTful，版本前缀 `/api/v1/`
+* **请求**: 文件上传使用 `multipart/form-data`，参数验证使用 Pydantic
+* **响应**: JSON格式，错误响应包含 `error` 和 `message` 字段
+* **状态码**: 200成功，400参数错误，404不存在，500服务器错误
+
+### 3.5 错误处理
+* **异常分类**: 业务异常(HTTPException 4xx)，系统异常(500)
+* **处理原则**: 服务层抛出异常，API层捕获并转换，所有异常记录日志
+* **日志**: 使用 `logging.getLogger(__name__)`，错误日志包含 `exc_info=True`
+
+### 3.6 配置管理
+* **优先级**: `.env.local` > `.env` > 环境变量 > 默认值
+* **配置项**: 数据库路径(自动配置)，模型阈值，服务端口，文件上传限制，日志级别
+* **敏感信息**: 不得硬编码，使用环境变量
+
+### 3.7 数据库操作
+* **连接**: 使用上下文管理器，及时关闭连接
+* **查询**: 参数化查询防注入，常用字段添加索引
+* **事务**: 相关操作使用事务，异常时回滚
+
+### 3.8 图像处理
+* **解码**: 使用 `utils/image.py` 中的工具函数
+* **验证**: 上传前验证文件大小和格式
+* **格式**: 检测服务接收 BGR，模型输入需要 RGB 时转换
+
+### 3.9 模型管理
+* **初始化**: 应用启动时加载，使用单例模式，初始化失败记录日志并抛出异常
+* **推理**: 推理前检查初始化状态，推理失败返回空结果
+
+---
+
+## 4. 核心工作流
+
+### 4.1 人脸检测流程
+1. API接收图像上传 → 验证文件大小和格式
+2. 解码图像 → 验证有效性 → 格式转换
+3. 调用 `DetectionService.detect_faces()` 检测人脸
+4. 如检测到人脸，调用 `RecognitionService.recognize()` 识别
+5. 如识别成功，调用 `PersonnelService.get_personnel_by_face_id()` 查询人员信息
+6. 构建响应返回
+
+### 4.2 服务初始化流程
+1. `main.py` 的 `lifespan` 函数被调用
+2. 初始化日志配置
+3. 创建并初始化服务实例（DetectionService, RecognitionService, PersonnelService）
+4. 调用 `init_services()` 注册服务
+5. 注册 API 路由
+
+---
+
+## 5. 前端开发规范
+
+### 5.1 目录结构
+```
+frontend/src/
+├── components/    # 可复用组件（common/, layout/）
+├── pages/         # 页面组件（Home/, Personnel/, FaceLibrary/）
+├── services/      # API服务层（api.ts）
+├── stores/        # 状态管理
+├── utils/         # 工具函数
+├── types/         # TypeScript类型定义
+└── hooks/         # 自定义Hooks/Composables
+```
+
+### 5.2 开发规范
+* **命名**: 组件 PascalCase，函数/变量 camelCase，常量 UPPER_SNAKE_CASE
+* **组件**: 函数式组件，TypeScript，清晰的 props 类型定义
+* **API调用**: 通过 `services/api.ts` 封装，使用 Axios，统一错误处理
+* **状态管理**: 全局状态用 Zustand/Pinia，组件状态用 useState/ref
+* **路由**: 声明式配置，kebab-case 路径，路由懒加载
+* **表单**: 使用表单库，必须验证，清晰错误提示
+
+### 5.3 功能模块
+* **人员管理**: 列表(搜索/筛选/分页)，添加(表单+图片上传)，编辑
+* **人脸库管理**: 列表(预览/删除)，识别测试(上传图片显示结果)
+
+### 5.4 API集成
+* **基础URL**: `http://localhost:8000` (开发环境)
+* **端点**: `POST /api/v1/detect` (已实现)，人员管理相关端点待实现
+* **环境变量**: `VITE_API_BASE_URL` 配置 API 地址
+
+---
+
+## 6. 其他规范
+
+### 6.1 测试
+* 单元测试、集成测试、API测试
+* 核心业务逻辑覆盖率 > 80%
+* 测试文件以 `test_` 开头
+
+### 6.2 版本控制
+* 提交信息格式：`类型: 简短描述` (feat/fix/docs/refactor)
+* 分支：main(稳定), develop(开发), feature/*, fix/*
+
+### 6.3 安全
+* 验证所有用户输入，限制文件大小和类型
+* 不在日志中记录敏感信息
+* 定期更新依赖包
+
+### 6.4 文档生成原则
+* 只在明确要求时生成文档
+* 只生成最关键部分（API格式、返回格式、一个样例）
+* 语言精炼，避免冗余
