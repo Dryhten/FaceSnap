@@ -3,12 +3,17 @@
   "version": "2.0.0",
   "description": "人脸检测与识别服务 - 前后端统一启动管理",
   "scripts": {
-    "install:all": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"cd backend && uv sync\" \"cd frontend && npm install\"",
+    "install": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"cd backend && uv sync\" \"cd frontend && npm install\"",
+    "install:musa": "cd backend && pip install -r requirements_musa.txt && pip install --no-deps 'facenet-pytorch>=2.5.3'",
     "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run backend\" \"npm run frontend\"",
+    "dev:musa": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run backend:musa\" \"npm run frontend\"",
     "backend": "cd backend && uv run python run.py",
+    "backend:musa": "cd backend && python run.py",
     "frontend": "cd frontend && npm run dev",
     "start": "npm run backend",
+    "start:musa": "npm run backend:musa",
     "database:init": "cd backend && uv run python scripts/init_database.py",
+    "database:init:musa": "cd backend && python scripts/init_database.py",
     "build": "cd frontend && npm run build"
   },
   "keywords": [
