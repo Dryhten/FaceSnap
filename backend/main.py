@@ -45,17 +45,38 @@ async def lifespan(app: FastAPI):
     # 输出设备信息
     device_str = settings.DEVICE
     logger.info(f"📱 设备配置: {device_str}")
-    if device_str.startswith("cuda:"):
+    if device_str.startswith("musa:"):
+        try:
+            import torch
+            import torch_musa
+            if hasattr(torch, "musa") and torch.musa.is_available():
+                device_id = int(device_str.split(":")[1]) if ":" in device_str else 0
+                if hasattr(torch.musa, "get_device_name"):
+                    device_name = torch.musa.get_device_name(device_id)
+                else:
+                    device_name = "MUSA GPU"
+                logger.info(f"   MUSA GPU 设备: {device_name}")
+                if hasattr(torch.musa, "get_device_properties"):
+                    props = torch.musa.get_device_properties(device_id)
+                    if hasattr(props, "total_memory"):
+                        logger.info(f"   MUSA GPU 内存: {props.total_memory / 1024**3:.2f} GB")
+            else:
+                logger.warning("   ⚠️  MUSA 设备不可用，将使用 CPU")
+        except ImportError:
+            logger.warning("   ⚠️  torch_musa 未安装，将使用 CPU")
+        except Exception as e:
+            logger.warning(f"   ⚠️  无法获取 MUSA GPU 信息: {e}")
+    elif device_str.startswith("cuda:"):
         try:
             import torch
             if torch.cuda.is_available():
                 device_id = int(device_str.split(":")[1]) if ":" in device_str else 0
-                logger.info(f"   GPU 设备: {torch.cuda.get_device_name(device_id)}")
-                logger.info(f"   GPU 内存: {torch.cuda.get_device_properties(device_id).total_memory / 1024**3:.2f} GB")
+                logger.info(f"   CUDA GPU 设备: {torch.cuda.get_device_name(device_id)}")
+                logger.info(f"   CUDA GPU 内存: {torch.cuda.get_device_properties(device_id).total_memory / 1024**3:.2f} GB")
             else:
                 logger.warning("   ⚠️  CUDA 设备不可用，将使用 CPU")
         except Exception as e:
-            logger.warning(f"   ⚠️  无法获取 GPU 信息: {e}")
+            logger.warning(f"   ⚠️  无法获取 CUDA GPU 信息: {e}")
     elif device_str == "cpu":
         logger.info("   💻 使用 CPU 设备")
     

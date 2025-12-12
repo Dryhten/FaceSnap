@@ -31,10 +31,35 @@ class RecognitionService:
             # 输出设备信息
             device_str = str(self.device)
             logger.info(f"使用设备: {device_str}")
-            if self.device.type == 'cuda':
+            
+            if self.device.type == 'musa':
+                # MUSA GPU
+                try:
+                    import torch_musa
+                    if hasattr(torch, "musa") and torch.musa.is_available():
+                        device_id = int(self.device.index) if self.device.index is not None else 0
+                        if hasattr(torch.musa, "get_device_name"):
+                            device_name = torch.musa.get_device_name(device_id)
+                        else:
+                            device_name = "MUSA GPU"
+                        logger.info(f"MUSA GPU 设备名称: {device_name}")
+                        if hasattr(torch.musa, "get_device_properties"):
+                            props = torch.musa.get_device_properties(device_id)
+                            if hasattr(props, "total_memory"):
+                                logger.info(f"MUSA GPU 内存: {props.total_memory / 1024**3:.2f} GB")
+                    else:
+                        logger.warning("MUSA 设备不可用，将回退到 CPU")
+                        self.device = torch.device('cpu')
+                        device_str = 'cpu'
+                except ImportError:
+                    logger.warning("torch_musa 未安装，将回退到 CPU")
+                    self.device = torch.device('cpu')
+                    device_str = 'cpu'
+            elif self.device.type == 'cuda':
+                # CUDA GPU
                 if torch.cuda.is_available():
-                    logger.info(f"GPU 设备名称: {torch.cuda.get_device_name(self.device)}")
-                    logger.info(f"GPU 内存: {torch.cuda.get_device_properties(self.device).total_memory / 1024**3:.2f} GB")
+                    logger.info(f"CUDA GPU 设备名称: {torch.cuda.get_device_name(self.device)}")
+                    logger.info(f"CUDA GPU 内存: {torch.cuda.get_device_properties(self.device).total_memory / 1024**3:.2f} GB")
                 else:
                     logger.warning("CUDA 设备不可用，将回退到 CPU")
                     self.device = torch.device('cpu')
