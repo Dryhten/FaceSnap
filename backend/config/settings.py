@@ -39,10 +39,28 @@ class Settings:
     FACE_DETECTION_THRESHOLD: float = float(os.getenv("FACE_DETECTION_THRESHOLD", "0.9"))
     FACE_RECOGNITION_THRESHOLD: float = float(os.getenv("FACE_RECOGNITION_THRESHOLD", "0.7"))
     # 设备配置：优先使用环境变量，否则根据CUDA可用性自动选择
-    DEVICE: str = os.getenv(
+    _DEVICE_RAW: str = os.getenv(
         "DEVICE",
         "cuda:0" if os.getenv("CUDA_VISIBLE_DEVICES") is not None else "cpu"
     )
+    
+    @staticmethod
+    def _normalize_device(device_str: str) -> str:
+        """
+        规范化设备名称，将 MUSA 设备转换为 PyTorch 可识别的设备类型
+        
+        MUSA GPU 使用 privateuseone 设备类型
+        """
+        if device_str.startswith("musa:"):
+            # MUSA GPU 使用 privateuseone 设备类型
+            device_id = device_str.split(":")[1] if ":" in device_str else "0"
+            return f"privateuseone:{device_id}"
+        return device_str
+    
+    @property
+    def DEVICE(self) -> str:
+        """获取规范化后的设备名称"""
+        return self._normalize_device(self._DEVICE_RAW)
     
     # 服务配置
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")

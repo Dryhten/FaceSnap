@@ -2,6 +2,7 @@ import sys
 import io
 import os
 import logging
+import warnings
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,10 @@ from fastapi.staticfiles import StaticFiles
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+# 抑制 torchvision 图像扩展加载失败的警告（不影响功能，facenet-pytorch 使用 PIL 处理图像）
+# 这个警告是因为 torchvision 的 C++ 扩展未加载，但我们使用 PIL/Pillow 处理图像，所以可以安全忽略
+warnings.filterwarnings('ignore', category=UserWarning, module='torchvision.io.image')
 
 # 导入 settings 时会自动设置 TORCH_HOME
 from app.core.config import settings

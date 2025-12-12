@@ -138,7 +138,8 @@ API_RELOAD=false
 # ==================== 后端模型配置 ====================
 FACE_DETECTION_THRESHOLD=0.9
 FACE_RECOGNITION_THRESHOLD=0.7
-DEVICE=cuda:0
+# 设备配置：CUDA 使用 cuda:0，MUSA GPU 使用 musa:0，CPU 使用 cpu
+DEVICE=musa:0
 
 # ==================== 后端文件上传配置 ====================
 MAX_UPLOAD_SIZE=10485760
@@ -245,6 +246,7 @@ API_RELOAD=false
 # ==================== 后端模型配置 ====================
 FACE_DETECTION_THRESHOLD=0.9
 FACE_RECOGNITION_THRESHOLD=0.7
+# 设备配置：CUDA 使用 cuda:0，MUSA GPU 使用 musa:0，CPU 使用 cpu
 DEVICE=cuda:0
 
 # ==================== 后端文件上传配置 ====================
