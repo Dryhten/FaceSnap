@@ -27,6 +27,21 @@ class RecognitionService:
         try:
             import logging
             logger = logging.getLogger(__name__)
+            
+            # 输出设备信息
+            device_str = str(self.device)
+            logger.info(f"使用设备: {device_str}")
+            if self.device.type == 'cuda':
+                if torch.cuda.is_available():
+                    logger.info(f"GPU 设备名称: {torch.cuda.get_device_name(self.device)}")
+                    logger.info(f"GPU 内存: {torch.cuda.get_device_properties(self.device).total_memory / 1024**3:.2f} GB")
+                else:
+                    logger.warning("CUDA 设备不可用，将回退到 CPU")
+                    self.device = torch.device('cpu')
+                    device_str = 'cpu'
+            elif self.device.type == 'cpu':
+                logger.info("使用 CPU 设备")
+            
             self.mtcnn = MTCNN(
                 image_size=160,
                 margin=20,
@@ -36,7 +51,7 @@ class RecognitionService:
             
             self.model = InceptionResnetV1(pretrained='vggface2').eval().to(self.device)
             self._load_face_database()
-            logger.info("识别模型已初始化")
+            logger.info(f"识别模型已初始化 (设备: {device_str})")
             self._initialized = True
             
         except Exception as e:

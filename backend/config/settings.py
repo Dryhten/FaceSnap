@@ -38,23 +38,44 @@ class Settings:
     # 模型配置
     FACE_DETECTION_THRESHOLD: float = float(os.getenv("FACE_DETECTION_THRESHOLD", "0.9"))
     FACE_RECOGNITION_THRESHOLD: float = float(os.getenv("FACE_RECOGNITION_THRESHOLD", "0.7"))
-    # 设备配置：优先使用环境变量，否则根据CUDA可用性自动选择
-    _DEVICE_RAW: str = os.getenv(
-        "DEVICE",
-        "cuda:0" if os.getenv("CUDA_VISIBLE_DEVICES") is not None else "cpu"
-    )
+    # 设备配置：优先使用环境变量，否则自动检测可用设备
+    _DEVICE_RAW: str = os.getenv("DEVICE", "auto")
+    
+    @staticmethod
+    def _detect_available_device() -> str:
+        """
+        自动检测可用的设备
+        优先使用 GPU（CUDA/MUSA），如果不可用则使用 CPU
+        """
+        try:
+            import torch
+            if torch.cuda.is_available():
+                # 检测到 CUDA/MUSA GPU 可用
+                return "cuda:0"
+            else:
+                # GPU 不可用，使用 CPU
+                return "cpu"
+        except ImportError:
+            # torch 未安装，使用 CPU
+            return "cpu"
+        except Exception:
+            # 其他错误，使用 CPU
+            return "cpu"
     
     @staticmethod
     def _normalize_device(device_str: str) -> str:
         """
         规范化设备名称，将 MUSA 设备转换为 PyTorch 可识别的设备类型
         
-        MUSA GPU 使用 privateuseone 设备类型
+        MUSA GPU 的 PyTorch 实现兼容 CUDA API，所以使用 cuda 设备类型
         """
-        if device_str.startswith("musa:"):
-            # MUSA GPU 使用 privateuseone 设备类型
+        if device_str == "auto" or device_str == "":
+            # 自动检测设备
+            return Settings._detect_available_device()
+        elif device_str.startswith("musa:"):
+            # MUSA GPU 兼容 CUDA API，使用 cuda 设备类型
             device_id = device_str.split(":")[1] if ":" in device_str else "0"
-            return f"privateuseone:{device_id}"
+            return f"cuda:{device_id}"
         return device_str
     
     @property

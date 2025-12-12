@@ -42,6 +42,23 @@ async def lifespan(app: FastAPI):
     
     logger.info("🚀 启动人脸检测服务...")
     
+    # 输出设备信息
+    device_str = settings.DEVICE
+    logger.info(f"📱 设备配置: {device_str}")
+    if device_str.startswith("cuda:"):
+        try:
+            import torch
+            if torch.cuda.is_available():
+                device_id = int(device_str.split(":")[1]) if ":" in device_str else 0
+                logger.info(f"   GPU 设备: {torch.cuda.get_device_name(device_id)}")
+                logger.info(f"   GPU 内存: {torch.cuda.get_device_properties(device_id).total_memory / 1024**3:.2f} GB")
+            else:
+                logger.warning("   ⚠️  CUDA 设备不可用，将使用 CPU")
+        except Exception as e:
+            logger.warning(f"   ⚠️  无法获取 GPU 信息: {e}")
+    elif device_str == "cpu":
+        logger.info("   💻 使用 CPU 设备")
+    
     try:
         detection_service = DetectionService()
         detection_service.initialize()
