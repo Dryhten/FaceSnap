@@ -24,7 +24,19 @@ sudo apt update
 # 2. 安装 Python pip（如果已安装可跳过）
 sudo apt install python3-pip -y
 
-# 3. 安装官方 musa-deploy 工具
+# 3. 安装 Node.js 和 npm（如果已安装可跳过）
+# 方法1：使用 NodeSource 官方仓库（推荐，可安装最新版本）
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 方法2：使用系统包管理器（版本可能较旧）
+# sudo apt install -y nodejs npm
+
+# 验证安装
+node --version
+npm --version
+
+# 4. 安装官方 musa-deploy 工具
 sudo pip install musa-deploy -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 ```
 
@@ -167,9 +179,25 @@ python run.py
 - Python >= 3.12
 - PyTorch >= 2.0.0（带 CUDA 支持）
 - CUDA 驱动和工具包（根据 PyTorch 版本要求）
+- Node.js 16+ 和 npm（用于启动脚本）
 - uv（Python 依赖管理工具）
 
-#### 二、安装依赖
+#### 二、安装 Node.js 和 npm（如果未安装）
+
+```bash
+# 方法1：使用 NodeSource 官方仓库（推荐，可安装最新版本）
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 方法2：使用系统包管理器（版本可能较旧）
+# sudo apt install -y nodejs npm
+
+# 验证安装
+node --version
+npm --version
+```
+
+#### 三、安装依赖
 
 ```bash
 # 进入后端目录
@@ -179,7 +207,7 @@ cd backend
 uv sync
 ```
 
-#### 三、初始化数据库
+#### 四、初始化数据库
 
 ```bash
 # 在项目根目录执行
@@ -193,7 +221,7 @@ cd backend
 uv run python scripts/init_database.py
 ```
 
-#### 四、配置环境变量
+#### 五、配置环境变量
 
 复制 `.env.example` 为 `.env` 并修改配置：
 
@@ -222,7 +250,7 @@ ALLOWED_IMAGE_EXTENSIONS=.jpg,.jpeg,.png,.bmp
 LOG_LEVEL=INFO
 ```
 
-#### 五、运行服务
+#### 六、运行服务
 
 ```bash
 # 方式1：同时启动前后端（开发模式）
