@@ -30,6 +30,7 @@ class Settings:
     DATA_DIR: Path = BASE_DIR / "backend" / "data"
     DATABASE_DIR: Path = DATA_DIR / "database"  # SQLite 数据库文件目录
     FACES_DIR: Path = DATA_DIR / "faces"  # 人脸图片存储目录
+    MODELS_DIR: Path = DATA_DIR / "models"  # 模型文件存储目录
     
     # 数据库配置（SQLite）
     DB_PATH: Path = DATABASE_DIR / "personnel.db"  # SQLite 数据库文件路径
@@ -67,6 +68,7 @@ class Settings:
         # 确保必要的目录存在
         self.DATABASE_DIR.mkdir(parents=True, exist_ok=True)
         self.FACES_DIR.mkdir(parents=True, exist_ok=True)
+        self.MODELS_DIR.mkdir(parents=True, exist_ok=True)
     
     @property
     def db_path(self) -> str:
@@ -87,4 +89,9 @@ class Settings:
 
 # 创建全局配置实例
 settings = Settings()
+
+# 在模块加载时设置 TORCH_HOME，让 facenet-pytorch 将模型下载到项目目录
+# 必须在导入 facenet-pytorch 之前设置，所以在这里设置
+if 'TORCH_HOME' not in os.environ:
+    os.environ['TORCH_HOME'] = str(settings.MODELS_DIR)
 

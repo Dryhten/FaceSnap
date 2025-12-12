@@ -84,16 +84,21 @@ conda install -c conda-forge libstdcxx-ng=13 -y
 # 进入项目目录（根据实际挂载路径调整）
 cd /home/server/FaceSnap
 
-# 安装项目依赖（使用 npm 脚本，会自动处理 facenet-pytorch 的依赖问题）
+# 安装前后端依赖（会自动处理 facenet-pytorch 的依赖问题）
 npm run install:musa
 ```
 
 或者手动安装：
 
 ```bash
+# 安装后端依赖
 cd backend
 pip install -r requirements_musa.txt
 pip install --no-deps 'facenet-pytorch>=2.5.3'
+
+# 安装前端依赖
+cd ../frontend
+npm install
 ```
 
 **重要提示：** 使用 `--no-deps` 标志意味着您要对 `torch` 和 `torchvision` 的可用性负责。您必须确保在运行应用程序之前，兼容版本的 `torch` 和 `torchvision` 已经通过其他方式（例如使用 conda 或其他 pip 命令）安装在您的环境中。

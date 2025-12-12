@@ -4,7 +4,7 @@
   "description": "人脸检测与识别服务 - 前后端统一启动管理",
   "scripts": {
     "install": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"cd backend && uv sync\" \"cd frontend && npm install\"",
-    "install:musa": "cd backend && pip install -r requirements_musa.txt && pip install --no-deps 'facenet-pytorch>=2.5.3'",
+    "install:musa": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"cd backend && pip install -r requirements_musa.txt && pip install --no-deps 'facenet-pytorch>=2.5.3'\" \"cd frontend && npm install\"",
     "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run backend\" \"npm run frontend\"",
     "dev:musa": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run backend:musa\" \"npm run frontend\"",
     "backend": "cd backend && uv run python run.py",

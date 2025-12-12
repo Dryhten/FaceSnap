@@ -1,5 +1,6 @@
 import sys
 import io
+import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -10,6 +11,7 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
+# 导入 settings 时会自动设置 TORCH_HOME
 from app.core.config import settings
 from app.core.models import HealthResponse
 from app.services.detection import DetectionService
