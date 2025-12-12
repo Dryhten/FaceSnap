@@ -27,6 +27,7 @@ class PersonnelService:
                     phone TEXT,
                     address TEXT,
                     gender TEXT CHECK(gender IN ('male', 'female', 'other', '')),
+                    category TEXT,
                     status TEXT DEFAULT 'active' CHECK(status IN ('active', 'inactive')),
                     photo_path TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -42,6 +43,9 @@ class PersonnelService:
             if 'gender' not in columns:
                 cursor.execute("ALTER TABLE personnel_info ADD COLUMN gender TEXT")
                 logger.info("已添加 gender 字段")
+            if 'category' not in columns:
+                cursor.execute("ALTER TABLE personnel_info ADD COLUMN category TEXT")
+                logger.info("已添加 category 字段")
             
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_face_id ON personnel_info(face_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_name ON personnel_info(name)")
@@ -76,7 +80,7 @@ class PersonnelService:
 
             cursor = conn.cursor()
             query = """
-                SELECT name, id_number, phone, address, gender, status, 
+                SELECT name, id_number, phone, address, gender, category, status, 
                        photo_path, created_at, updated_at 
                 FROM personnel_info 
                 WHERE face_id = ?
@@ -91,6 +95,7 @@ class PersonnelService:
                     "phone": result["phone"],
                     "address": result["address"],
                     "gender": result["gender"],
+                    "category": result["category"],
                     "status": result["status"],
                     "photo_path": result["photo_path"],
                     "created_at": result["created_at"] if result["created_at"] else None,

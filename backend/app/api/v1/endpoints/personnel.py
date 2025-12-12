@@ -82,7 +82,7 @@ async def get_personnel_list(
         # 获取分页数据
         offset = (page - 1) * page_size
         query_sql = f"""
-            SELECT id, face_id, name, id_number, phone, address, gender, status, photo_path, 
+            SELECT id, face_id, name, id_number, phone, address, gender, category, status, photo_path, 
                    created_at, updated_at
             FROM personnel_info
             WHERE {where_sql}
@@ -102,6 +102,7 @@ async def get_personnel_list(
                 "phone": row["phone"],
                 "address": row["address"],
                 "gender": row["gender"],
+                "category": row["category"],
                 "status": row["status"],
                 "photo_path": row["photo_path"],
                 "created_at": row["created_at"],
@@ -135,7 +136,7 @@ async def get_personnel(personnel_id: int):
         
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, face_id, name, id_number, phone, address, gender, status, photo_path, created_at, updated_at FROM personnel_info WHERE id = ?",
+            "SELECT id, face_id, name, id_number, phone, address, gender, category, status, photo_path, created_at, updated_at FROM personnel_info WHERE id = ?",
             (personnel_id,)
         )
         row = cursor.fetchone()
@@ -152,6 +153,7 @@ async def get_personnel(personnel_id: int):
             "phone": row["phone"],
             "address": row["address"],
             "gender": row["gender"],
+            "category": row["category"],
             "status": row["status"],
             "photo_path": row["photo_path"],
             "created_at": row["created_at"],
@@ -172,6 +174,7 @@ async def create_personnel(
     phone: Optional[str] = Form(None, description="电话"),
     address: Optional[str] = Form(None, description="住址"),
     gender: Optional[str] = Form(None, description="性别"),
+    category: Optional[str] = Form(None, description="人员类别"),
     photo: UploadFile = File(..., description="照片")
 ):
     """创建人员"""
@@ -250,9 +253,9 @@ async def create_personnel(
         
         try:
             cursor.execute(
-                """INSERT INTO personnel_info (face_id, name, id_number, phone, address, gender, photo_path, status)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, 'active')""",
-                (face_id, name, id_number or None, phone or None, address or None, gender or None, photo_path)
+                """INSERT INTO personnel_info (face_id, name, id_number, phone, address, gender, category, photo_path, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')""",
+                (face_id, name, id_number or None, phone or None, address or None, gender or None, category or None, photo_path)
             )
             conn.commit()
             personnel_id = cursor.lastrowid
@@ -284,6 +287,7 @@ async def create_personnel(
             "phone": phone,
             "address": address,
             "gender": gender,
+            "category": category,
             "status": "active",
             "photo_path": photo_path,
             "created_at": "",
@@ -305,6 +309,7 @@ async def update_personnel(
     phone: Optional[str] = Form(None, description="电话"),
     address: Optional[str] = Form(None, description="住址"),
     gender: Optional[str] = Form(None, description="性别"),
+    category: Optional[str] = Form(None, description="人员类别"),
     photo: Optional[UploadFile] = File(None, description="照片")
 ):
     """更新人员信息"""
@@ -362,6 +367,10 @@ async def update_personnel(
         if gender is not None:
             update_fields.append("gender = ?")
             update_values.append(gender)
+        
+        if category is not None:
+            update_fields.append("category = ?")
+            update_values.append(category)
         
         # 如果上传了新照片，需要重新提取特征
         if photo:

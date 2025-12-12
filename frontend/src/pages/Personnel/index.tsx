@@ -68,6 +68,7 @@ const Personnel = () => {
       phone: record.phone,
       address: record.address,
       gender: record.gender,
+      category: record.category,
     })
     setIsModalOpen(true)
   }
@@ -96,6 +97,7 @@ const Personnel = () => {
           phone: values.phone,
           address: values.address,
           gender: values.gender,
+          category: values.category,
         }
         if (photo) {
           updateData.photo = photo
@@ -114,6 +116,7 @@ const Personnel = () => {
           phone: values.phone,
           address: values.address,
           gender: values.gender,
+          category: values.category,
           photo: photo,
         }
         await personnelApi.create(createData)
@@ -194,6 +197,12 @@ const Personnel = () => {
         }
         return genderMap[gender] || gender
       },
+    },
+    {
+      title: '人员类别',
+      dataIndex: 'category',
+      key: 'category',
+      render: (category: string) => category || '-',
     },
     {
       title: '状态',
@@ -327,6 +336,12 @@ const Personnel = () => {
               <Select.Option value="female">女</Select.Option>
               <Select.Option value="other">其他</Select.Option>
             </Select>
+          </Form.Item>
+          <Form.Item
+            name="category"
+            label="人员类别"
+          >
+            <Input placeholder="请输入人员类别" />
           </Form.Item>
           <Form.Item
             name="photo"

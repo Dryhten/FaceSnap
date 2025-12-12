@@ -4,7 +4,7 @@ import logging
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from app.core.models import DetectResponse, FaceBox, PersonInfo
+from app.core.models import DetectResponse, FaceBox, PersonInfo, FaceResult
 from app.services.detection import DetectionService
 from app.services.recognition import RecognitionService
 from app.services.personnel import PersonnelService
@@ -88,71 +88,77 @@ async def detect_face(file: UploadFile = File(..., description="图片文件")):
         if not faces:
             return DetectResponse(
                 detected=False,
-                face_box=None,
-                person_info=None
+                faces=[]
             )
         
-        largest_face = detection_service.get_largest_face(faces)
-        if not largest_face:
-            return DetectResponse(
-                detected=False,
-                face_box=None,
-                person_info=None
+        # 按检测置信度降序排列
+        faces.sort(key=lambda f: f.get("confidence", 0.0), reverse=True)
+        
+        logger.debug(f"检测到 {len(faces)} 个人脸")
+        
+        # 处理每个人脸，进行识别
+        face_results = []
+        for face in faces:
+            face_box = FaceBox(
+                x=face['x'],
+                y=face['y'],
+                w=face['w'],
+                h=face['h'],
+                confidence=face.get('confidence')
             )
-        
-        logger.debug(f"检测到人脸: ({largest_face['x']}, {largest_face['y']}, {largest_face['w']}, {largest_face['h']})")
-        
-        face_box = FaceBox(
-            x=largest_face['x'],
-            y=largest_face['y'],
-            w=largest_face['w'],
-            h=largest_face['h']
-        )
-        
-        face_img = largest_face['face_img']
-        recognition_result = None
-        person_info = None
-        
-        try:
-            recognition_result = await loop.run_in_executor(_executor, recognition_service.recognize, face_img)
-        except Exception as e:
-            logger.error(f"人脸识别过程出错: {e}", exc_info=True)
-        
-        if recognition_result:
+            
+            face_img = face['face_img']
+            recognition_result = None
+            person_info = None
+            recognition_confidence = None
+            
             try:
-                face_id, confidence = recognition_result
-                logger.info(f"识别成功: {face_id} (置信度: {confidence:.3f})")
-                
-                try:
-                    personnel_data = await loop.run_in_executor(
-                        _executor,
-                        personnel_service.get_personnel_by_face_id, 
-                        face_id
-                    )
-                    if personnel_data:
-                        person_info = PersonInfo(
-                            name=personnel_data.get("name", ""),
-                            id_number=personnel_data.get("id_number"),
-                            phone=personnel_data.get("phone"),
-                            address=personnel_data.get("address"),
-                            gender=personnel_data.get("gender"),
-                            status=personnel_data.get("status"),
-                            photo_path=personnel_data.get("photo_path"),
-                            created_at=personnel_data.get("created_at"),
-                            updated_at=personnel_data.get("updated_at")
-                        )
-                        logger.debug(f"获取人员信息: {person_info.name}")
-                    else:
-                        logger.warning(f"未找到人员信息: face_id={face_id}")
-                except Exception as e:
-                    logger.error(f"查询人员信息失败: {e}", exc_info=True)
+                recognition_result = await loop.run_in_executor(_executor, recognition_service.recognize, face_img)
             except Exception as e:
-                logger.error(f"处理识别结果失败: {e}", exc_info=True)
+                logger.error(f"人脸识别过程出错: {e}", exc_info=True)
+            
+            if recognition_result:
+                try:
+                    face_id, confidence = recognition_result
+                    recognition_confidence = confidence
+                    logger.info(f"识别成功: {face_id} (置信度: {confidence:.3f})")
+                    
+                    try:
+                        personnel_data = await loop.run_in_executor(
+                            _executor,
+                            personnel_service.get_personnel_by_face_id, 
+                            face_id
+                        )
+                        if personnel_data:
+                            person_info = PersonInfo(
+                                name=personnel_data.get("name", ""),
+                                id_number=personnel_data.get("id_number"),
+                                phone=personnel_data.get("phone"),
+                                address=personnel_data.get("address"),
+                                gender=personnel_data.get("gender"),
+                                category=personnel_data.get("category"),
+                                status=personnel_data.get("status"),
+                                photo_path=personnel_data.get("photo_path"),
+                                created_at=personnel_data.get("created_at"),
+                                updated_at=personnel_data.get("updated_at")
+                            )
+                            logger.debug(f"获取人员信息: {person_info.name}")
+                        else:
+                            logger.warning(f"未找到人员信息: face_id={face_id}")
+                    except Exception as e:
+                        logger.error(f"查询人员信息失败: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"处理识别结果失败: {e}", exc_info=True)
+            
+            face_results.append(FaceResult(
+                face_box=face_box,
+                person_info=person_info,
+                recognition_confidence=recognition_confidence
+            ))
         
         return DetectResponse(
             detected=True,
-            face_box=face_box,
-            person_info=person_info
+            faces=face_results
         )
         
     except HTTPException:

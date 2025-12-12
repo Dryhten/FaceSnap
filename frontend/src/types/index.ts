@@ -15,6 +15,7 @@ export interface PersonInfo {
   phone?: string
   address?: string
   gender?: string
+  category?: string
 }
 
 export interface DetectResponse {
@@ -31,6 +32,7 @@ export interface Personnel {
   phone?: string
   address?: string
   gender?: string
+  category?: string
   status: 'active' | 'inactive'
   photo_path?: string
   created_at: string
@@ -43,6 +45,7 @@ export interface PersonnelCreate {
   phone?: string
   address?: string
   gender?: string
+  category?: string
   photo: File
 }
 
@@ -52,6 +55,7 @@ export interface PersonnelUpdate {
   phone?: string
   address?: string
   gender?: string
+  category?: string
   photo?: File
 }
 

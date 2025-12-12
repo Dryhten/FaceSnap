@@ -123,6 +123,9 @@ export const personnelApi = {
     if (data.gender) {
       formData.append('gender', data.gender)
     }
+    if (data.category) {
+      formData.append('category', data.category)
+    }
     formData.append('photo', data.photo)
 
     const response = await api.post<Personnel>('/api/v1/personnel', formData, {
@@ -152,6 +155,9 @@ export const personnelApi = {
     }
     if (data.gender !== undefined) {
       formData.append('gender', data.gender || '')
+    }
+    if (data.category !== undefined) {
+      formData.append('category', data.category || '')
     }
     if (data.photo) {
       formData.append('photo', data.photo)
