@@ -30,10 +30,12 @@ class RecognitionService:
             
             # 输出设备信息
             device_str = str(self.device)
-            logger.info(f"使用设备: {device_str}")
+            original_device = self.device
+            mtcnn_device = self.device
             
+            # MTCNN 在 MUSA 设备上不支持某些操作（如 trunc），需要强制使用 CPU
             if self.device.type == 'musa':
-                # MUSA GPU
+                # MUSA GPU - MTCNN 检测使用 CPU，因为某些操作不支持
                 try:
                     import torch_musa
                     if hasattr(torch, "musa") and torch.musa.is_available():
@@ -47,13 +49,18 @@ class RecognitionService:
                             props = torch.musa.get_device_properties(device_id)
                             if hasattr(props, "total_memory"):
                                 logger.info(f"MUSA GPU 内存: {props.total_memory / 1024**3:.2f} GB")
+                        # MTCNN 在 MUSA 上不支持，使用 CPU
+                        mtcnn_device = torch.device('cpu')
+                        logger.info("⚠️  MTCNN 检测在 MUSA 设备上不支持某些操作，将使用 CPU 进行检测")
                     else:
                         logger.warning("MUSA 设备不可用，将回退到 CPU")
                         self.device = torch.device('cpu')
+                        mtcnn_device = torch.device('cpu')
                         device_str = 'cpu'
                 except ImportError:
                     logger.warning("torch_musa 未安装，将回退到 CPU")
                     self.device = torch.device('cpu')
+                    mtcnn_device = torch.device('cpu')
                     device_str = 'cpu'
             elif self.device.type == 'cuda':
                 # CUDA GPU
@@ -63,6 +70,7 @@ class RecognitionService:
                 else:
                     logger.warning("CUDA 设备不可用，将回退到 CPU")
                     self.device = torch.device('cpu')
+                    mtcnn_device = torch.device('cpu')
                     device_str = 'cpu'
             elif self.device.type == 'cpu':
                 logger.info("使用 CPU 设备")
@@ -70,13 +78,13 @@ class RecognitionService:
             self.mtcnn = MTCNN(
                 image_size=160,
                 margin=20,
-                device=self.device,
+                device=mtcnn_device,  # 使用 mtcnn_device（MUSA 时使用 CPU）
                 post_process=True
             ).eval()
             
             self.model = InceptionResnetV1(pretrained='vggface2').eval().to(self.device)
             self._load_face_database()
-            logger.info(f"识别模型已初始化 (设备: {device_str})")
+            logger.info(f"识别模型已初始化 (MTCNN设备: {mtcnn_device}, 主设备: {device_str})")
             self._initialized = True
             
         except Exception as e:
