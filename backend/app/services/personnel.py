@@ -18,6 +18,16 @@ class PersonnelService:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
+            # 人员类别表（先创建，供 personnel_info 外键参考）
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS personnel_categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    sort_order INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS personnel_info (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,6 +56,28 @@ class PersonnelService:
             if 'category' not in columns:
                 cursor.execute("ALTER TABLE personnel_info ADD COLUMN category TEXT")
                 logger.info("已添加 category 字段")
+            if 'category_id' not in columns:
+                cursor.execute(
+                    "ALTER TABLE personnel_info ADD COLUMN category_id INTEGER REFERENCES personnel_categories(id)"
+                )
+                logger.info("已添加 category_id 字段")
+                # 迁移：将现有 category 文本同步到 personnel_categories 并回填 category_id
+                cursor.execute(
+                    "SELECT DISTINCT category FROM personnel_info WHERE category IS NOT NULL AND category != ''"
+                )
+                for (name,) in cursor.fetchall():
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO personnel_categories (name, sort_order) VALUES (?, 0)",
+                        (name,),
+                    )
+                cursor.execute("SELECT id, name FROM personnel_categories")
+                for row in cursor.fetchall():
+                    cid, cname = row[0], row[1]
+                    cursor.execute(
+                        "UPDATE personnel_info SET category_id = ? WHERE category = ?",
+                        (cid, cname),
+                    )
+                logger.info("已从 category 文本迁移 category_id")
             
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_face_id ON personnel_info(face_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_name ON personnel_info(name)")
@@ -54,6 +86,19 @@ class PersonnelService:
             logger.debug(f"数据库初始化完成: {self.db_path}")
             conn.close()
             return True
+        except sqlite3.OperationalError as e:
+            if "readonly" in str(e).lower():
+                logger.error(
+                    "数据库为只读，无法执行迁移。请检查路径与权限，例如：\n"
+                    "  chmod -R u+rwX %s\n"
+                    "然后重启服务。错误: %s",
+                    Path(self.db_path).parent,
+                    e,
+                    exc_info=True,
+                )
+            else:
+                logger.error(f"数据库初始化失败: {e}", exc_info=True)
+            return False
         except Exception as e:
             logger.error(f"数据库初始化失败: {e}", exc_info=True)
             return False
@@ -80,10 +125,12 @@ class PersonnelService:
 
             cursor = conn.cursor()
             query = """
-                SELECT name, id_number, phone, address, gender, category, status, 
-                       photo_path, created_at, updated_at 
-                FROM personnel_info 
-                WHERE face_id = ?
+                SELECT p.name, p.id_number, p.phone, p.address, p.gender, p.status,
+                       p.photo_path, p.created_at, p.updated_at,
+                       c.name AS category_name
+                FROM personnel_info p
+                LEFT JOIN personnel_categories c ON p.category_id = c.id
+                WHERE p.face_id = ?
             """
             cursor.execute(query, (face_id,))
             result = cursor.fetchone()
@@ -95,7 +142,7 @@ class PersonnelService:
                     "phone": result["phone"],
                     "address": result["address"],
                     "gender": result["gender"],
-                    "category": result["category"],
+                    "category": result["category_name"] if result["category_name"] else None,
                     "status": result["status"],
                     "photo_path": result["photo_path"],
                     "created_at": result["created_at"] if result["created_at"] else None,

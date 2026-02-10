@@ -7,7 +7,7 @@ import type {
   Personnel,
   PersonnelCreate,
   PersonnelUpdate,
-  ApiResponse,
+  PersonnelCategory,
   PaginatedResponse,
 } from '@/types'
 
@@ -123,8 +123,8 @@ export const personnelApi = {
     if (data.gender) {
       formData.append('gender', data.gender)
     }
-    if (data.category) {
-      formData.append('category', data.category)
+    if (data.category_id !== undefined && data.category_id !== null) {
+      formData.append('category_id', String(data.category_id))
     }
     formData.append('photo', data.photo)
 
@@ -156,8 +156,8 @@ export const personnelApi = {
     if (data.gender !== undefined) {
       formData.append('gender', data.gender || '')
     }
-    if (data.category !== undefined) {
-      formData.append('category', data.category || '')
+    if (data.category_id !== undefined) {
+      formData.append('category_id', data.category_id === null ? '' : String(data.category_id))
     }
     if (data.photo) {
       formData.append('photo', data.photo)
@@ -183,6 +183,46 @@ export const personnelApi = {
   },
 }
 
+/**
+ * 人员类别 API（无删除）
+ */
+export const personnelCategoriesApi = {
+  getList: async (): Promise<PersonnelCategory[]> => {
+    const response = await api.get<PersonnelCategory[]>('/api/v1/personnel-categories')
+    return response.data
+  },
+  create: async (data: { name: string; sort_order?: number }): Promise<PersonnelCategory> => {
+    const formData = new FormData()
+    formData.append('name', data.name)
+    if (data.sort_order !== undefined) {
+      formData.append('sort_order', String(data.sort_order))
+    }
+    const response = await api.post<PersonnelCategory>(
+      '/api/v1/personnel-categories',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return response.data
+  },
+  update: async (
+    id: number,
+    data: { name?: string; sort_order?: number }
+  ): Promise<PersonnelCategory> => {
+    const formData = new FormData()
+    if (data.name !== undefined) {
+      formData.append('name', data.name)
+    }
+    if (data.sort_order !== undefined) {
+      formData.append('sort_order', String(data.sort_order))
+    }
+    const response = await api.put<PersonnelCategory>(
+      `/api/v1/personnel-categories/${id}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return response.data
+  },
+}
 
 export default api
 

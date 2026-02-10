@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => {
   const backendHost = (env.API_HOST === '0.0.0.0' || env.API_HOST === '127.0.0.1') 
     ? 'localhost' 
     : (env.API_HOST || 'localhost')
-  
+  const frontendPort = parseInt(env.VITE_FRONTEND_PORT || '3088', 10)
+
   return {
     plugins: [react()],
     resolve: {
@@ -24,7 +25,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: '0.0.0.0',  // 允许外部访问
-      port: 3000,
+      port: frontendPort,
       proxy: {
         '/api': {
           target: `http://${backendHost}:${backendPort}`,

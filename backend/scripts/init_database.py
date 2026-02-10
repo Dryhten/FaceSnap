@@ -42,7 +42,17 @@ def create_database():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # 创建人员信息表
+        # 创建人员类别表（先于 personnel_info，便于外键）
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS personnel_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 创建人员信息表（使用 category_id 关联类别）
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS personnel_info (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +62,7 @@ def create_database():
                 phone TEXT,
                 address TEXT,
                 gender TEXT CHECK(gender IN ('male', 'female', 'other', '')),
-                category TEXT,
+                category_id INTEGER REFERENCES personnel_categories(id),
                 status TEXT DEFAULT 'active' CHECK(status IN ('active', 'inactive')),
                 photo_path TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

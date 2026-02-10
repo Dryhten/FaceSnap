@@ -79,14 +79,16 @@ async def get_personnel_list(
         cursor.execute(count_sql, params)
         total = cursor.fetchone()[0]
         
-        # 获取分页数据
+        # 获取分页数据（join 类别表返回类别名称，响应格式不变）
         offset = (page - 1) * page_size
         query_sql = f"""
-            SELECT id, face_id, name, id_number, phone, address, gender, category, status, photo_path, 
-                   created_at, updated_at
-            FROM personnel_info
+            SELECT p.id, p.face_id, p.name, p.id_number, p.phone, p.address, p.gender,
+                   p.status, p.photo_path, p.created_at, p.updated_at,
+                   c.name AS category
+            FROM personnel_info p
+            LEFT JOIN personnel_categories c ON p.category_id = c.id
             WHERE {where_sql}
-            ORDER BY created_at DESC
+            ORDER BY p.created_at DESC
             LIMIT ? OFFSET ?
         """
         cursor.execute(query_sql, params + [page_size, offset])
@@ -136,8 +138,13 @@ async def get_personnel(personnel_id: int):
         
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, face_id, name, id_number, phone, address, gender, category, status, photo_path, created_at, updated_at FROM personnel_info WHERE id = ?",
-            (personnel_id,)
+            """SELECT p.id, p.face_id, p.name, p.id_number, p.phone, p.address, p.gender,
+                      p.status, p.photo_path, p.created_at, p.updated_at,
+                      c.name AS category
+               FROM personnel_info p
+               LEFT JOIN personnel_categories c ON p.category_id = c.id
+               WHERE p.id = ?""",
+            (personnel_id,),
         )
         row = cursor.fetchone()
         conn.close()
@@ -167,6 +174,26 @@ async def get_personnel(personnel_id: int):
         raise HTTPException(status_code=500, detail=f"获取人员详情失败: {str(e)}")
 
 
+def _parse_category_id(raw: Optional[str]) -> Optional[int]:
+    """将 Form 传来的 category_id（可能为 ''）转为 Optional[int]"""
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw)
+    except (ValueError, TypeError):
+        return None
+
+
+def _validate_category_id(conn, category_id: Optional[int]) -> None:
+    """校验 category_id 为 None 或存在于 personnel_categories，否则抛出 HTTPException"""
+    if category_id is None:
+        return
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM personnel_categories WHERE id = ?", (category_id,))
+    if not cursor.fetchone():
+        raise HTTPException(status_code=400, detail=f"人员类别 id={category_id} 不存在")
+
+
 @router.post("/personnel", summary="创建人员")
 async def create_personnel(
     name: str = Form(..., description="姓名"),
@@ -174,7 +201,7 @@ async def create_personnel(
     phone: Optional[str] = Form(None, description="电话"),
     address: Optional[str] = Form(None, description="住址"),
     gender: Optional[str] = Form(None, description="性别"),
-    category: Optional[str] = Form(None, description="人员类别"),
+    category_id: Optional[str] = Form(None, description="人员类别ID，与前端表单字段名一致"),
     photo: UploadFile = File(..., description="照片")
 ):
     """创建人员"""
@@ -235,7 +262,9 @@ async def create_personnel(
         if not conn:
             raise HTTPException(status_code=500, detail="数据库连接失败")
         
+        category_id_parsed = _parse_category_id(category_id)
         cursor = conn.cursor()
+        _validate_category_id(conn, category_id_parsed)
         
         # 检查身份证号是否已存在（如果提供了身份证号）
         if id_number:
@@ -251,14 +280,20 @@ async def create_personnel(
                     detail=f"身份证号 {id_number} 已被使用，请检查是否已存在该人员"
                 )
         
+        category_name = None
         try:
             cursor.execute(
-                """INSERT INTO personnel_info (face_id, name, id_number, phone, address, gender, category, photo_path, status)
+                """INSERT INTO personnel_info (face_id, name, id_number, phone, address, gender, category_id, photo_path, status)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')""",
-                (face_id, name, id_number or None, phone or None, address or None, gender or None, category or None, photo_path)
+                (face_id, name, id_number or None, phone or None, address or None, gender or None, category_id_parsed, photo_path)
             )
             conn.commit()
             personnel_id = cursor.lastrowid
+            if category_id_parsed:
+                cursor.execute("SELECT name FROM personnel_categories WHERE id = ?", (category_id_parsed,))
+                r = cursor.fetchone()
+                if r:
+                    category_name = r["name"]
         except Exception as db_error:
             conn.rollback()
             conn.close()
@@ -278,7 +313,7 @@ async def create_personnel(
         finally:
             conn.close()
         
-        # 返回创建的人员信息
+        # 返回创建的人员信息（响应格式不变：含 category 名称）
         return {
             "id": personnel_id,
             "face_id": face_id,
@@ -287,7 +322,7 @@ async def create_personnel(
             "phone": phone,
             "address": address,
             "gender": gender,
-            "category": category,
+            "category": category_name or None,
             "status": "active",
             "photo_path": photo_path,
             "created_at": "",
@@ -309,7 +344,7 @@ async def update_personnel(
     phone: Optional[str] = Form(None, description="电话"),
     address: Optional[str] = Form(None, description="住址"),
     gender: Optional[str] = Form(None, description="性别"),
-    category: Optional[str] = Form(None, description="人员类别"),
+    category_id: Optional[str] = Form(None, description="人员类别ID，与前端表单字段名一致"),
     photo: Optional[UploadFile] = File(None, description="照片")
 ):
     """更新人员信息"""
@@ -331,6 +366,11 @@ async def update_personnel(
         
         old_face_id = row["face_id"]
         old_photo_path = row["photo_path"]
+        
+        category_id_parsed: Optional[int] = None
+        if category_id is not None:
+            category_id_parsed = _parse_category_id(category_id)
+            _validate_category_id(conn, category_id_parsed)
         
         update_fields = []
         update_values = []
@@ -368,9 +408,9 @@ async def update_personnel(
             update_fields.append("gender = ?")
             update_values.append(gender)
         
-        if category is not None:
-            update_fields.append("category = ?")
-            update_values.append(category)
+        if category_id is not None:
+            update_fields.append("category_id = ?")
+            update_values.append(category_id_parsed)
         
         # 如果上传了新照片，需要重新提取特征
         if photo:

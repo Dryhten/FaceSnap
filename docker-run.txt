@@ -1,0 +1,40 @@
+# 1. 先停止/删除旧容器（避免冲突）
+sudo docker stop facesnap || true
+sudo docker rm facesnap || true
+
+# 2. 一键创建+启动+执行所有命令（完整安装Node.js+npm）
+sudo docker run -itd \
+  --name facesnap \
+  --privileged=true \
+  --net=host \
+  --pid=host \
+  --env MTHREADS_VISIBLE_DEVICES=all \
+  --shm-size=80g \
+  -w /home/server/FaceSnap \
+  -v /home/server:/home/server \
+  --entrypoint /bin/bash \
+  registry.mthreads.com/mcconline/musa-pytorch-release-public:rc3.1.0-v1.3.0-S4000-py310 \
+  -c "
+    # 激活conda环境（避免环境冲突）
+    source /opt/conda/etc/profile.d/conda.sh && conda activate py310;
+    
+    # ========== 核心：完整安装Node.js + npm ==========
+    # 1. 安装依赖包（Node.js安装前置）
+    apt update && apt install -y curl wget libgl1-mesa-glx libglib2.0-0;
+    # 2. 添加Node.js官方源（LTS版，兼容稳定性好）
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -;
+    # 3. 安装Node.js（自动包含npm）
+    apt install -y nodejs;
+    
+    # ========== 后续环境配置 ==========
+    # 4. 升级npm到最新版（解决权限问题）
+    npm install -g npm@latest --unsafe-perm;
+    # 5. 安装conda依赖
+    conda install -c conda-forge libstdcxx-ng=13 -y;
+    # 6. 项目根目录执行基础依赖安装
+    npm install;
+    # 7. 执行自定义npm安装脚本
+    npm run install:musa;
+    # 8. 启动项目，日志输出到stdout（docker logs可捕获）
+    npm run dev:musa 2>&1;
+  "

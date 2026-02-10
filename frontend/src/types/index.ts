@@ -39,13 +39,21 @@ export interface Personnel {
   updated_at: string
 }
 
+/** 人员类别（供下拉与类别管理页使用） */
+export interface PersonnelCategory {
+  id: number
+  name: string
+  sort_order?: number
+  created_at?: string
+}
+
 export interface PersonnelCreate {
   name: string
   id_number?: string
   phone?: string
   address?: string
   gender?: string
-  category?: string
+  category_id?: number | null
   photo: File
 }
 
@@ -55,7 +63,7 @@ export interface PersonnelUpdate {
   phone?: string
   address?: string
   gender?: string
-  category?: string
+  category_id?: number | null
   photo?: File
 }
 

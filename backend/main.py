@@ -24,6 +24,7 @@ from app.services.recognition import RecognitionService
 from app.services.personnel import PersonnelService
 from app.api.v1.endpoints.detect import router as detect_router, init_services as init_detect_services
 from app.api.v1.endpoints.personnel import router as personnel_router, init_services as init_personnel_services
+from app.api.v1.endpoints.categories import router as categories_router, init_services as init_categories_services
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -92,6 +93,7 @@ async def lifespan(app: FastAPI):
         
         init_detect_services(detection_service, recognition_service, personnel_service)
         init_personnel_services(personnel_service, recognition_service, detection_service)
+        init_categories_services(personnel_service)
         
         logger.info("✅ 服务启动完成")
         
@@ -128,6 +130,11 @@ app.include_router(
     personnel_router,
     prefix="/api/v1",
     tags=["人员管理"]
+)
+app.include_router(
+    categories_router,
+    prefix="/api/v1",
+    tags=["人员类别"]
 )
 
 app.mount("/api/v1/faces", StaticFiles(directory=str(settings.FACES_DIR)), name="faces")

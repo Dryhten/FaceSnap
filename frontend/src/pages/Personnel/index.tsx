@@ -21,11 +21,12 @@ import {
   UploadOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { personnelApi } from '@/services/api'
-import type { Personnel, PersonnelCreate, PersonnelUpdate } from '@/types'
+import { personnelApi, personnelCategoriesApi } from '@/services/api'
+import type { Personnel, PersonnelCreate, PersonnelUpdate, PersonnelCategory } from '@/types'
 
 const Personnel = () => {
   const [personnelList, setPersonnelList] = useState<Personnel[]>([])
+  const [categoryList, setCategoryList] = useState<PersonnelCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -34,6 +35,10 @@ const Personnel = () => {
 
   useEffect(() => {
     loadPersonnelList()
+  }, [])
+
+  useEffect(() => {
+    personnelCategoriesApi.getList().then(setCategoryList).catch(() => {})
   }, [])
 
   const loadPersonnelList = async () => {
@@ -62,13 +67,16 @@ const Personnel = () => {
 
   const handleEdit = (record: Personnel) => {
     setEditingRecord(record)
+    const categoryId = record.category
+      ? categoryList.find((c) => c.name === record.category)?.id ?? undefined
+      : undefined
     form.setFieldsValue({
       name: record.name,
       id_number: record.id_number,
       phone: record.phone,
       address: record.address,
       gender: record.gender,
-      category: record.category,
+      category_id: categoryId ?? null,
     })
     setIsModalOpen(true)
   }
@@ -90,14 +98,13 @@ const Personnel = () => {
       const photo = fileList?.[0]?.originFileObj
 
       if (editingRecord) {
-        // 更新
         const updateData: PersonnelUpdate = {
           name: values.name,
           id_number: values.id_number,
           phone: values.phone,
           address: values.address,
           gender: values.gender,
-          category: values.category,
+          category_id: values.category_id ?? null,
         }
         if (photo) {
           updateData.photo = photo
@@ -105,7 +112,6 @@ const Personnel = () => {
         await personnelApi.update(editingRecord.id, updateData)
         message.success('更新成功')
       } else {
-        // 创建
         if (!photo) {
           message.error('请上传人员照片')
           return
@@ -116,8 +122,8 @@ const Personnel = () => {
           phone: values.phone,
           address: values.address,
           gender: values.gender,
-          category: values.category,
-          photo: photo,
+          category_id: values.category_id ?? null,
+          photo,
         }
         await personnelApi.create(createData)
         message.success('创建成功')
@@ -337,11 +343,12 @@ const Personnel = () => {
               <Select.Option value="other">其他</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item
-            name="category"
-            label="人员类别"
-          >
-            <Input placeholder="请输入人员类别" />
+          <Form.Item name="category_id" label="人员类别">
+            <Select
+              placeholder="请选择人员类别"
+              allowClear
+              options={categoryList.map((c) => ({ label: c.name, value: c.id }))}
+            />
           </Form.Item>
           <Form.Item
             name="photo"

@@ -1,8 +1,6 @@
 import { Layout as AntLayout, Menu } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
-import {
-  UserOutlined,
-} from '@ant-design/icons'
+import { UserOutlined, TagsOutlined } from '@ant-design/icons'
 import type { ReactNode } from 'react'
 
 const { Header, Content, Sider } = AntLayout
@@ -20,6 +18,11 @@ const Layout = ({ children }: LayoutProps) => {
       key: '/personnel',
       icon: <UserOutlined />,
       label: '人员管理',
+    },
+    {
+      key: '/personnel-categories',
+      icon: <TagsOutlined />,
+      label: '人员类别',
     },
   ]
 
